@@ -1,0 +1,18 @@
+Role
+Admin
+sponser (Company name, Industry, Budget)
+influencers (Name, Category, Niche, Reach(followers/activity), no of followers,rating,earnings)
+
+Ad_request(campaign_id,influener_id,messages,requirenments,payment_amount,status(Pending,Accepted,Rejected))
+
+Campaign(name,description,start_date,end_date,budget,visibility(public,private),goals)
+
+https://docs.google.com/document/d/e/2PACX-1vSWc_RrSIlJZamInJ6n-KZtJkcgTpp-CsaR_-Kq_U5ZwzCf-zWU8b6RmaV86KaNiJVUJ5cFadTr88VI/pub
+
+controller - 57
+assign controller
+
+#summary,search
+sponser can accept ad requests by influencers for public campaigns.
+influencers - receive search accept or reject ad requests
+rate,book,houseful
