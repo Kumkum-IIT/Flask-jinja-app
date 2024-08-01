@@ -59,7 +59,7 @@
                             <a class="nav-link" href="/summary">Summary</a>
                         </li>
                         <li class="nav-item">
-                            <a href="/logout"><button class="btn btn-danger">Logout</button></a>
+                            <a href="/"><button class="btn btn-danger">Logout</button></a>
                         </li>
                     </ul>
                 </div>
@@ -68,29 +68,32 @@
     </nav>
     <div style="margin-top: 5%; margin-left: 5%; margin-right: 5%;">
     <h1>Admin Dashboard</h1>
-    <form method ="post">
+    <form method="post">
         <div class="row">        
-        {% for campaign in campaigns %}        
-            <div class="col">
-                <div class="card" style="width: 18rem;">
-                    <div class="card-body">
-                        <h5 class="card-title">{{campaign.campaign_name}}</h5>
-                        <h6 class="card-subtitle mb-2 text-body-secondary">{{campaign.budget}}</h6>
-                        <select name="campaign_status" id="campaign_status" class="form-select">
-                                <option>{{campaign.status}}</option>
-                        </select><br>
-                        <select name="campaign_visibility" id="campaign_visibility" class="form-select">
-                            <option>{{campaign.visibility}}</option>
-                            <option>Private</option>
-                        </select><br>
-                        <input type="number" hidden value="{{campaign.campaign_id}}" name="campaign_id"> 
-                        <button type="submit" class="btn btn-primary">Assign</button>
+            {% for campaign in campaigns %}        
+                <div class="col">
+                    <div class="card" style="width: 18rem;">
+                        <div class="card-body">
+                            <h5 class="card-title">{{ campaign.campaign_name }}</h5>
+                            <h6 class="card-subtitle mb-2 text-body-secondary">{{ campaign.budget }}</h6>
+                            <select name="campaign_status_{{ campaign.campaign_id }}" class="form-select">
+                                <option value="Active" {% if campaign.status == 'Active' %}selected{% endif %}>Active</option>
+                                <option value="Pending" {% if campaign.status == 'Pending' %}selected{% endif %}>Pending</option>
+                                <option value="Flag" {% if campaign.status == 'Flag' %}selected{% endif %}>Flag</option>
+                            </select><br>
+                            <select name="campaign_visibility_{{ campaign.campaign_id }}" class="form-select">
+                                <option value="Public" {% if campaign.visibility == 'Public' %}selected{% endif %}>Public</option>
+                                <option value="Private" {% if campaign.visibility == 'Private' %}selected{% endif %}>Private</option>
+                            </select><br>
+                            <input type="hidden" value="{{ campaign.campaign_id }}" name="campaign_id_{{ campaign.campaign_id }}">
+                            <button type="submit" class="btn btn-primary">Assign</button>
+                        </div>
                     </div>
-                </div>
-            </div>        
-        {% endfor %}
+                </div>        
+            {% endfor %}
         </div>
-    </form>    
+    </form>
+      
     </div>
 </body>
 </html>

@@ -16,3 +16,23 @@ assign controller
 sponser can accept ad requests by influencers for public campaigns.
 influencers - receive search accept or reject ad requests
 rate,book,houseful
+
+Sponsers-create campaign, search influencers, send ad request, for particular campaign
+        -can create multiple capmaigns and track individual campaign
+        -accept ad requests from influencers for public campaign
+        -campaign and ad req management
+        -create ad req based on goals on the campaign
+
+each may have company name, individual name, industry and budget
+
+Admin-flag inappropriate campaigns/users
+     -monitor user/campaign and see stats
+     -JWT based login
+     -approve sponser sign up and requests
+
+
+Influencer- view/accept/reject particular req
+          -maintain profile
+          -search public campaigns acc to different parameters and accept 
+
+daily reminders, monthly activity report, user triggered aync job- export as csv, performance and caching

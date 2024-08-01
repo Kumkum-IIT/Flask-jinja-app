@@ -70,21 +70,22 @@
     <div style="margin-top: 5%; margin-left: 5%; margin-right: 5%;">
         <h1>Assign Sponser a Campaign</h1>
         <form class="d-flex"  method="post">
-        {% for sponser in sponsers %}
+            {% for sponser in sponsers %}
             <div class="p-2 flex-fill">
-                <h5>{{sponser.company_name}}</h5>
-                <h6>Industry:{{sponser.industry}}, Budget:{{sponser.budget}}</h6>
+                <h5>{{ sponser.company_name }}</h5>
+                <h6>Industry: {{ sponser.industry }}, Budget: {{ sponser.budget }}</h6>
                 {% for campaign in campaigns %}
-                    {% if campaign in sponser.sponser_campaign %}
-                        <input type="checkbox" name="campaigns_assigned{{campaign.campaign_id}}" id="{{campaign.campaign_id}}" value="{{campaign.campaign_id}}" checked>
-                        <label for="{{campaign.campaign_id}}">{{campaign.campaign_name}} <sub>{{campaign.description}}</sub></label><br>
-                    {% else %}
-                        <input type="checkbox" name="campaigns_assigned{{campaign.campaign_id}}" id="{{campaign.campaign_id}}" value="{{campaign.campaign_id}}">
-                        <label for="{{campaign.campaign_id}}">{{campaign.campaign_name}} <sub>{{campaign.description}}</sub></label><br>
-                    {% endif %}
+                    <input type="checkbox" 
+                           name="campaigns_assigned_{{ sponser.sponser_id }}_{{ campaign.campaign_id }}" 
+                           id="{{ sponser.sponser_id }}_{{ campaign.campaign_id }}" 
+                           value="{{ campaign.campaign_id }}"
+                           {% if campaign.campaign_id in checked_campaigns[sponser.sponser_id] %} checked {% endif %}>
+                    <label for="{{ sponser.sponser_id }}_{{ campaign.campaign_id }}">
+                        {{ campaign.campaign_name }} <sub>{{ campaign.description }}</sub>
+                    </label><br>
                 {% endfor %}
-                <input type="number" hidden value="{{sponser.sponser_id}}" name="sponser_id{{sponser.sponser_id}}">
-            </div>        
+                <input type="hidden" value="{{ sponser.sponser_id }}" name="sponser_id{{ sponser.sponser_id }}">
+            </div>
         {% endfor %}
         <button type="submit" class="btn btn-success " style="height: 80px" >Assign</button>
         </form>        

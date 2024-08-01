@@ -53,28 +53,26 @@
         </div>
     </nav>
     <h1>Sponser Dashboard</h1>
-    <form method ="post">
-        <div class="row">        
-        {% for influencer in influencers %}        
+    <div class="row">        
+        {% for campaign in campaigns %}        
             <div class="col">
                 <div class="card" style="width: 18rem;">
                     <div class="card-body">
-                        <h5 class="card-title">{{influencer.influencer_name}}</h5>
-                        <h6 class="card-subtitle mb-2 text-body-secondary">{{influencer.categpry}}</h6>
-                        <select name="influencer_niche" id="influencer_niche" class="form-select">
-                                <option>{{influencer.niche}}</option>
+                        <h5 class="card-title">{{campaign.campaign_name}}</h5>
+                        <h6 class="card-subtitle mb-2 text-body-secondary">{{campaign.budget}}</h6>
+                        <select name="campaign_status" id="campaign_status" class="form-select">
+                                <option>{{campaign.status}}</option>
                         </select><br>
-                        <select name="influencer_followers" id="influencer_followers" class="form-select">
-                            <option>{{influencer.followers}}</option>
+                        <select name="campaign_visibility" id="campaign_visibility" class="form-select">
+                            <option>{{campaign.visibility}}</option>
                             <option>Private</option>
                         </select><br>
-                        <input type="number" hidden value="{{influencer.influencer_id}}" name="influencer_id"> 
+                        <input type="number" hidden value="{{campaign.campaign_id}}" name="campaign_id"> 
                         <button type="submit" class="btn btn-primary">Assign</button>
                     </div>
                 </div>
             </div>        
         {% endfor %}
-        </div>
-    </form>
+    </div>
 </body>
 </html>
