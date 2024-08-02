@@ -4,6 +4,7 @@ class User(db.Model):
     username = db.Column(db.String(30),primary_key=True)
     password = db.Column(db.String(50),nullable=False)
     roles = db.Column(db.String(50),nullable=False)  #admin or general
+    approved_by_admin = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -12,7 +13,6 @@ class Influencer(db.Model):
     influencer_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
     password = db.Column(db.String(50), nullable=False)
-    # category = db.Column(db.String(50), nullable=False)
     image_url = db.Column(db.String(100), nullable=True)
     niche = db.Column(db.String(50), nullable=False)
     reach = db.Column(db.Float(10,2), nullable=False)
@@ -37,6 +37,8 @@ class AdRequest(db.Model):
     requirements = db.Column(db.String(200), nullable=False)
     payment_amount = db.Column(db.Float(10,2), nullable=False)
     status = db.Column(db.String(20), default='Pending')
+    ad_request_by_sponser = db.Column(db.Boolean, default=False)
+    ad_request_by_influencer = db.Column(db.Boolean, default=False)
 
     def __repr__(self):
         return f'<AdRequest {self.ad_request_id}>'

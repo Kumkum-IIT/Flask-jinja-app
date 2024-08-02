@@ -5,3 +5,4 @@ class Config:
 
     SECRET_KEY = 'mysecretkey'
     SECURITY_PASSWORD_SALT= 'mysecuritypasswordsalt'
+    JWT_SECRET_KEY = 'your-jwt-secret-key'

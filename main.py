@@ -3,17 +3,14 @@ from os import path
 from applications.models import *
 from applications.database import db
 from applications.config import Config
-from flask_login import LoginManager
 
 app = None 
-login_manager = LoginManager()
 
 def create_app():
     app = Flask(__name__)
 
     app.config.from_object(Config)
     db.init_app(app)
-    login_manager.init_app(app)
 
     with app.app_context():
         if not path.exists("/home/snakescipt/Projects/flask-jinja/Flask-jinja-app/instance/database.sqlite3"):
@@ -23,10 +20,6 @@ def create_app():
             db.session.commit()
 
         import applications.controllers
-
-    @login_manager.user_loader
-    def load_user(user_id):
-        return User.query.get(int(user_id))
 
     return app
 

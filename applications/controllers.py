@@ -1,8 +1,7 @@
 from flask import current_app as app
 from flask import request, flash
+from flask import jsonify
 from flask import render_template, redirect, url_for
-from flask_login import current_user
-
 from applications.models import *
 
 logged_user=None
@@ -13,6 +12,7 @@ def home():
 
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
+    global logged_user
     if request.method=="GET":
         return render_template("user_login.html")
     if request.method=="POST":
@@ -25,23 +25,32 @@ def user_login():
                 if password_from_db==password:
                     global logged_user
                     logged_user=username
-                    if user_from_db.roles == "Admin":
+                    if user_from_db.roles == "Admin" and user_from_db.approved_by_admin == True:
                         return redirect(url_for("admin_dashboard"))
-                    elif user_from_db.roles == "Influencer":
-                        print("test")
+                    elif user_from_db.roles == "Influencer" and user_from_db.approved_by_admin == True:
                         return redirect(url_for("influencer_dashboard"))
-                    elif user_from_db.roles == "Sponser":
+                    elif user_from_db.roles == "Sponser" and user_from_db.approved_by_admin == True:
                         return redirect(url_for("sponser_dashboard"))
+                    else:
+                        return jsonify({"message":"User not approved by admin"})
                 else:
                     return render_template("user_login.html", message="Password failed")
             else:
                 return render_template("user_login.html",message="id failed")
-        except:
-            return "some error"
+        except KeyError:
+            # Handle cases where form data might be missing
+            return render_template("user_login.html", message="Missing form data"), 400
+        except ValueError:
+            # Handle value errors, e.g., if data cannot be processed correctly
+            return render_template("user_login.html", message="Invalid data format"), 400
+        except Exception as err:
+            # Log the error for debugging purposes
+            print(f"An unexpected error occurred: {err}")
+            # Return a user-friendly error message
+            return render_template("user_login.html", message="An unexpected error occurred. Please try again later."), 500
 
 @app.route("/admin_dashboard", methods=["GET","POST"])
 def admin_dashboard():
-    print("---------->>", current_user)
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -79,7 +88,7 @@ def influencer_dashboard():
     
         active_campaigns = Campaign.query.filter_by(visibility='Public',status='Active').all()
         print("active_campaigns----",active_campaigns)
-        new_requests = AdRequest.query.filter_by(influencer_id=influencer.influencer_id, status='Pending').all()
+        new_requests = AdRequest.query.filter_by(influencer_id=influencer.influencer_id, status='Pending',ad_req_by_sponser=True).all()
 
     return render_template("influencer_dashboard.html", influencer=influencer, active_campaigns=active_campaigns, new_requests=new_requests)
 
@@ -109,7 +118,8 @@ def send_ad_request(campaign_id):
                     messages=message,
                     requirements="",
                     payment_amount=float(campaign.budget),  # Ensure campaign.budget is cast to float
-                    status='Pending'
+                    status='Pending',
+                    ad_request_by_influencer=True
                 )
                 db.session.add(ad_request)
             
@@ -135,13 +145,20 @@ def report_request(request_id):
     return redirect(url_for('influencer_dashboard'))
 
 
-@app.route("/sponser_dashboard", methods=["GET","POST"])
-def sponser_dashboard():    
+@app.route("/sponser_dashboard", methods=["GET", "POST"])
+def sponser_dashboard():
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
-    if request.method=="GET":
-        return render_template("sponser_dashboard.html",campaigns=Campaign.query.all())
+    
+    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    if not sponsor:
+        return "Sponsor not found", 404
+
+    campaigns = Campaign.query.join(Sponser_camp, Campaign.campaign_id == Sponser_camp.campaign_id)\
+                              .filter(Sponser_camp.sponser_id == sponsor.sponser_id).all()
+
+    return render_template("sponser_dashboard.html", sponsor=sponsor, campaigns=campaigns)
 
 @app.route("/influ_register", methods=["GET", "POST"])
 def influ_register():
@@ -181,7 +198,7 @@ def sponser_register():
         else:
             new_sponser = Sponser(company_name = company_name, password = password, industry = industry, budget = budget)
             db.session.add(new_sponser)
-            new_user = User(username = company_name, password = password,roles="Sponser")
+            new_user = User(username = company_name, password = password,roles="Sponser", approved_by_admin=False)
             db.session.add(new_user)
             db.session.commit()
             return redirect('/') 
@@ -370,18 +387,129 @@ def assign_camp_spon():
         db.session.commit()
         return redirect(url_for("assign_camp_spon"))
 
-# @app.route("/summary", methods=["GET"])
-# def summary():
-#     global logged_user
-#     if not logged_user:
-#         return redirect(url_for("user_login"))
-#     # return a list of all the json objects of chart data for each venue
-#     venues=Venue.query.all()
-#     venues_json=[venue.to_json() for venue in venues]
-#     return render_template("summary.html", venues=venues, venues_json=venues_json)
+@app.route('/search_influ/<int:campaign_id>')
+def search_influ(campaign_id):
+    campaign = Campaign.query.get_or_404(campaign_id)
+    influencers = Influencer.query.filter(Influencer.niche == campaign.goals).all()
+    return render_template('search_influ.html', campaign=campaign, influencers=influencers)
 
-# for ad in sponser.sponser_ad:
-#             if ad.campaign_id in removed_campaign:
-#                 db.session.delete(ad)
-#                 db.session.commit()
-#         print(sponser, type(sponser), campaign_assigned, type(campaign_assigned))
+@app.route("/influencer/<int:influencer_id>/<int:campaign_id>", methods=["GET"])
+def view_influ_profile(influencer_id,campaign_id):
+    try:
+        print("influ-------", influencer_id)
+        print("camp-------", campaign_id)
+        # Fetch the influencer details from the database
+        influencer = Influencer.query.get_or_404(influencer_id)
+        campaign = Campaign.query.get_or_404(campaign_id)
+        print("campaign-----", campaign)
+        return render_template("view_influ_profile.html", influencer=influencer, campaign=campaign)
+    except Exception as e:
+        return e  # Redirect to a default page if there's an error
+    
+@app.route('/send_ad_request_influ/<int:influencer_id>/<int:campaign_id>', methods=['GET', 'POST'])
+def send_ad_request_influ(influencer_id, campaign_id):
+    global logged_user
+    if not logged_user:
+        return redirect(url_for("user_login"))
+    
+    if request.method == 'POST':
+        ad_name = request.form.get('ad_name')
+        requirements = request.form.get('requirements')
+        payment_amount = request.form.get('payment_amount')
+        messages = request.form.get('messages')
+        sponser_id=Sponser.query.filter_by(company_name=logged_user).first().sponser_id
+
+        
+        # Assuming you have an AdRequest model and a relationship set up
+        ad_request = AdRequest(
+            ad_name=ad_name,
+            campaign_id=campaign_id,
+            requirements=requirements,
+            payment_amount=payment_amount,
+            messages=messages,
+            influencer_id=influencer_id,
+            sponser_id=sponser_id,  # Adjust according to your setup
+            ad_request_by_sponser=True
+        )
+        
+        db.session.add(ad_request)
+        db.session.commit()
+        
+        # Redirect to a confirmation page or back to the profile
+        return redirect(url_for('sponser_dashboard', influencer_id=influencer_id,campaign_id=campaign_id))
+
+    if request.method == 'GET':
+        influencer = Influencer.query.get_or_404(influencer_id)
+        return render_template('send_ad_request_influ.html', influencer_id=influencer_id, campaign_id=campaign_id, influencer=influencer)
+
+
+@app.route('/ad_requests')
+def ad_requests():
+    global logged_user
+    
+    if not logged_user:
+        return redirect(url_for('user_login'))  # Redirect if not logged in
+    
+    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    print(sponsor)
+    if not sponsor:
+        return redirect(url_for('user_login'))  # Redirect if not a sponsor
+    
+    ad_requests = AdRequest.query.filter_by(sponser_id=sponsor.sponser_id, ad_request_by_influencer=True).all()
+    print(ad_requests)
+    return render_template('ad_requests.html', ad_requests=ad_requests, sponsor=sponsor)
+
+@app.route('/accept_ad_request/<int:ad_request_id>')
+def accept_ad_request(ad_request_id):
+    global logged_user
+    
+    if not logged_user:
+        return redirect(url_for('user_login'))  # Redirect if not a sponsor
+    
+    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+
+    ad_request = AdRequest.query.get_or_404(ad_request_id)
+    if ad_request.sponser_id != sponsor.sponser_id:
+        return redirect(url_for('ad_requests'))  # Redirect if not the owner of the request
+    
+    ad_request.status = 'Accepted'
+    db.session.commit()
+    return redirect(url_for('ad_requests'))
+
+@app.route('/reject_ad_request/<int:ad_request_id>')
+def reject_ad_request(ad_request_id):
+    global logged_user
+    
+    if not logged_user:
+        return redirect(url_for('user_login'))  # Redirect if not a sponsor
+    
+    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+
+    ad_request = AdRequest.query.get_or_404(ad_request_id)
+    if ad_request.sponser_id != sponsor.sponser_id:
+        return redirect(url_for('ad_requests'))  # Redirect if not the owner of the request
+    
+    ad_request.status = 'Rejected'
+    db.session.commit()
+    return redirect(url_for('ad_requests'))
+
+@app.route("/approve_sponsors", methods=["GET"])
+def approve_sponsors():
+    unapproved_users = User.query.filter_by(approved_by_admin=False).all()
+    return render_template('approve_sponsors.html', unapproved_users=unapproved_users)
+
+@app.route("/approve_user/<username>", methods=["POST"])
+def approve_user(username):
+    user = User.query.get(username)
+    if user:
+        user.approved_by_admin = True
+        db.session.commit()
+    return redirect(url_for('approve_sponsors'))
+
+@app.route("/reject_user/<username>", methods=["POST"])
+def reject_user(username):
+    user = User.query.get(username)
+    if user:
+        db.session.delete(user)
+        db.session.commit()
+    return redirect(url_for('approve_sponsors'))
