@@ -1,8 +1,10 @@
 from flask import current_app as app
 from flask import request, flash
 from flask import jsonify
-from flask import render_template, redirect, url_for
+from flask import current_app as app, request, render_template, redirect, url_for, make_response
+from flask_jwt_extended import create_access_token, set_access_cookies, jwt_required, get_jwt_identity, unset_jwt_cookies
 from applications.models import *
+from datetime import timedelta
 
 logged_user=None
 
@@ -12,50 +14,59 @@ def home():
 
 @app.route("/user_login", methods=["GET", "POST"])
 def user_login():
-    global logged_user
-    if request.method=="GET":
+    if request.method == "GET":
         return render_template("user_login.html")
-    if request.method=="POST":
-        username=request.form.get("username")
-        password=request.form.get("password")
+    
+    if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
+        
         try:
-            user_from_db=User.query.get(username)
-            if user_from_db:
-                password_from_db=user_from_db.password
-                if password_from_db==password:
-                    global logged_user
-                    logged_user=username
-                    if user_from_db.roles == "Admin" and user_from_db.approved_by_admin == True:
-                        return redirect(url_for("admin_dashboard"))
-                    elif user_from_db.roles == "Influencer" and user_from_db.approved_by_admin == True:
-                        return redirect(url_for("influencer_dashboard"))
-                    elif user_from_db.roles == "Sponser" and user_from_db.approved_by_admin == True:
-                        return redirect(url_for("sponser_dashboard"))
-                    else:
-                        return jsonify({"message":"User not approved by admin"})
-                else:
-                    return render_template("user_login.html", message="Password failed")
+            user_from_db = User.query.filter_by(username=username).first()
+            if user_from_db.roles == "Admin" and user_from_db.approved_by_admin == True:
+                if user_from_db.password == password:
+                    access_token = create_access_token(
+                        identity={"username": username, "roles": user_from_db.roles},
+                        expires_delta=timedelta(hours=1)
+                    )
+                    response = make_response(redirect(url_for("admin_dashboard")))
+                    set_access_cookies(response, access_token)
+                    return response
+            elif user_from_db.roles == "Influencer" and user_from_db.approved_by_admin == True:
+                if user_from_db.password == password:
+                    access_token = create_access_token(
+                        identity={"username": username, "roles": user_from_db.roles},
+                        expires_delta=timedelta(hours=1)
+                    )
+                    response = make_response(redirect(url_for("influencer_dashboard")))
+                    set_access_cookies(response, access_token)
+                    return response
+            elif user_from_db.roles == "Sponser" and user_from_db.approved_by_admin == True:
+                if user_from_db.password == password:
+                    access_token = create_access_token(
+                        identity={"username": username, "roles": user_from_db.roles},
+                        expires_delta=timedelta(hours=1)
+                    )
+                    response = make_response(redirect(url_for("sponser_dashboard")))
+                    set_access_cookies(response, access_token)
+                    return response
             else:
-                return render_template("user_login.html",message="id failed")
-        except KeyError:
-            # Handle cases where form data might be missing
-            return render_template("user_login.html", message="Missing form data"), 400
-        except ValueError:
-            # Handle value errors, e.g., if data cannot be processed correctly
-            return render_template("user_login.html", message="Invalid data format"), 400
-        except Exception as err:
-            # Log the error for debugging purposes
-            print(f"An unexpected error occurred: {err}")
-            # Return a user-friendly error message
+                return render_template("user_login.html", message="Invalid username or password")
+        
+        except Exception as e:
+            print(f"An error occurred: {e}")
             return render_template("user_login.html", message="An unexpected error occurred. Please try again later."), 500
 
-@app.route("/admin_dashboard", methods=["GET","POST"])
+@app.route("/admin_dashboard", methods=["GET", "POST"])
+@jwt_required()
 def admin_dashboard():
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
-    if request.method=="GET":
-        return render_template("admin_dashboard.html",campaigns=Campaign.query.all())
+    current_user = get_jwt_identity()
+    if current_user["roles"] != "Admin":
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    if request.method == "GET":
+        return render_template("admin_dashboard.html", campaigns=Campaign.query.all())
+
     if request.method == "POST":
         campaign_ids = [int(campaign.campaign_id) for campaign in Campaign.query.all()]
         for campaign_id in campaign_ids:
@@ -68,13 +79,14 @@ def admin_dashboard():
                 if campaign_to_update:
                     campaign_to_update.status = campaign_status
                     campaign_to_update.visibility = campaign_visibility
-                    print(f"Updated Campaign ID {campaign_id}: Status = {campaign_status}, Visibility = {campaign_visibility}")
         db.session.commit()
-        
-    return redirect(url_for("admin_dashboard"))
+    
+    return render_template("admin_dashboard.html", campaigns=Campaign.query.all())
 
 @app.route("/influencer_dashboard", methods=["GET", "POST"])
+@jwt_required()
 def influencer_dashboard():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -93,12 +105,16 @@ def influencer_dashboard():
     return render_template("influencer_dashboard.html", influencer=influencer, active_campaigns=active_campaigns, new_requests=new_requests)
 
 @app.route("/campaign_details/<int:campaign_id>")
+@jwt_required()
 def campaign_details(campaign_id):
+    current_user = get_jwt_identity()
     campaign = Campaign.query.get_or_404(campaign_id)
     return render_template("camp_details.html", campaign=campaign)
 
 @app.route("/send_ad_request/<int:campaign_id>", methods=["POST"])
+@jwt_required()
 def send_ad_request(campaign_id):
+    current_user = get_jwt_identity()
     global logged_user
     if request.method == "POST":
         message = request.form.get("message")
@@ -129,7 +145,9 @@ def send_ad_request(campaign_id):
 
 
 @app.route("/accept_request/<int:request_id>", methods=["POST"])
+@jwt_required()
 def accept_request(request_id):
+    current_user = get_jwt_identity()
     ad_request = AdRequest.query.get_or_404(request_id)
     ad_request.status = 'Accepted'
     db.session.commit()
@@ -137,7 +155,9 @@ def accept_request(request_id):
     return redirect(url_for('influencer_dashboard'))
 
 @app.route("/report_request/<int:request_id>", methods=["POST"])
+@jwt_required()
 def report_request(request_id):
+    current_user = get_jwt_identity()
     ad_request = AdRequest.query.get_or_404(request_id)
     ad_request.status = 'Reported'
     db.session.commit()
@@ -146,7 +166,9 @@ def report_request(request_id):
 
 
 @app.route("/sponser_dashboard", methods=["GET", "POST"])
+@jwt_required()
 def sponser_dashboard():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -161,7 +183,9 @@ def sponser_dashboard():
     return render_template("sponser_dashboard.html", sponsor=sponsor, campaigns=campaigns)
 
 @app.route("/influ_register", methods=["GET", "POST"])
+@jwt_required()
 def influ_register():
+    current_user = get_jwt_identity()
     if request.method=="GET":
         return render_template("influ_register.html")
     if request.method=="POST":
@@ -184,7 +208,9 @@ def influ_register():
     return render_template('influ_register.html')
 
 @app.route("/sponser_register", methods=["GET", "POST"])
+@jwt_required()
 def sponser_register():
+    current_user = get_jwt_identity()
     if request.method=="GET":
         return render_template("sponser_register.html")
     if request.method=="POST":
@@ -205,7 +231,9 @@ def sponser_register():
     return render_template('sponser_register.html')
 
 @app.route("/create_campaign", methods=["GET", "POST"])
+@jwt_required()
 def create_campaign():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -228,7 +256,9 @@ def create_campaign():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/delete_campaign", methods=["GET", "POST"])
+@jwt_required()
 def delete_campaign():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -243,7 +273,9 @@ def delete_campaign():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/update_campaign", methods=["GET", "POST"])
+@jwt_required()
 def update_campaign():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -276,7 +308,9 @@ def update_campaign():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/add_sponser", methods=["GET", "POST"])
+@jwt_required()
 def add_sponser():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -295,7 +329,9 @@ def add_sponser():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/delete_sponser", methods=["GET", "POST"])
+@jwt_required()
 def delete_sponser():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -310,7 +346,9 @@ def delete_sponser():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/update_sponser", methods=["GET", "POST"])
+@jwt_required()
 def update_sponser():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -333,7 +371,9 @@ def update_sponser():
         return redirect(url_for("admin_dashboard"))
 
 @app.route("/assign_camp_spon", methods=["GET", "POST"])
+@jwt_required()
 def assign_camp_spon():
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -388,13 +428,17 @@ def assign_camp_spon():
         return redirect(url_for("assign_camp_spon"))
 
 @app.route('/search_influ/<int:campaign_id>')
+@jwt_required()
 def search_influ(campaign_id):
+    current_user = get_jwt_identity()
     campaign = Campaign.query.get_or_404(campaign_id)
     influencers = Influencer.query.filter(Influencer.niche == campaign.goals).all()
     return render_template('search_influ.html', campaign=campaign, influencers=influencers)
 
 @app.route("/influencer/<int:influencer_id>/<int:campaign_id>", methods=["GET"])
+@jwt_required()
 def view_influ_profile(influencer_id,campaign_id):
+    current_user = get_jwt_identity()
     try:
         print("influ-------", influencer_id)
         print("camp-------", campaign_id)
@@ -407,7 +451,9 @@ def view_influ_profile(influencer_id,campaign_id):
         return e  # Redirect to a default page if there's an error
     
 @app.route('/send_ad_request_influ/<int:influencer_id>/<int:campaign_id>', methods=['GET', 'POST'])
+@jwt_required()
 def send_ad_request_influ(influencer_id, campaign_id):
+    current_user = get_jwt_identity()
     global logged_user
     if not logged_user:
         return redirect(url_for("user_login"))
@@ -444,7 +490,9 @@ def send_ad_request_influ(influencer_id, campaign_id):
 
 
 @app.route('/ad_requests')
+@jwt_required()
 def ad_requests():
+    current_user = get_jwt_identity()
     global logged_user
     
     if not logged_user:
@@ -460,7 +508,9 @@ def ad_requests():
     return render_template('ad_requests.html', ad_requests=ad_requests, sponsor=sponsor)
 
 @app.route('/accept_ad_request/<int:ad_request_id>')
+@jwt_required()
 def accept_ad_request(ad_request_id):
+    current_user = get_jwt_identity()
     global logged_user
     
     if not logged_user:
@@ -477,7 +527,9 @@ def accept_ad_request(ad_request_id):
     return redirect(url_for('ad_requests'))
 
 @app.route('/reject_ad_request/<int:ad_request_id>')
+@jwt_required()
 def reject_ad_request(ad_request_id):
+    current_user = get_jwt_identity()
     global logged_user
     
     if not logged_user:
@@ -494,12 +546,16 @@ def reject_ad_request(ad_request_id):
     return redirect(url_for('ad_requests'))
 
 @app.route("/approve_sponsors", methods=["GET"])
+@jwt_required()
 def approve_sponsors():
+    current_user = get_jwt_identity()
     unapproved_users = User.query.filter_by(approved_by_admin=False).all()
     return render_template('approve_sponsors.html', unapproved_users=unapproved_users)
 
 @app.route("/approve_user/<username>", methods=["POST"])
+@jwt_required()
 def approve_user(username):
+    current_user = get_jwt_identity()
     user = User.query.get(username)
     if user:
         user.approved_by_admin = True
@@ -507,9 +563,17 @@ def approve_user(username):
     return redirect(url_for('approve_sponsors'))
 
 @app.route("/reject_user/<username>", methods=["POST"])
+@jwt_required()
 def reject_user(username):
+    current_user = get_jwt_identity()
     user = User.query.get(username)
     if user:
         db.session.delete(user)
         db.session.commit()
     return redirect(url_for('approve_sponsors'))
+
+@app.route("/logout", methods=["GET"])
+def logout():
+    response = make_response(redirect(url_for("user_login")))
+    unset_jwt_cookies(response)
+    return response
