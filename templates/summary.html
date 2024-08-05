@@ -17,79 +17,31 @@
 <body>
     <nav class="navbar bg-body-tertiary fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">TicketShow</a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="offcanvas" data-bs-target="#offcanvasNavbar"
-                aria-controls="offcanvasNavbar" aria-label="Toggle navigation">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="offcanvas offcanvas-end" tabindex="-1" id="offcanvasNavbar"
-                aria-labelledby="offcanvasNavbarLabel">
-                <div class="offcanvas-header">
-                    <h5 class="offcanvas-title" id="offcanvasNavbarLabel">admin dashboard</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-                </div>
-                <div class="offcanvas-body">
-                    <ul class="navbar-nav justify-content-end flex-grow-1 pe-3">
-                        <li class="nav-item">
-                            <a class="nav-link active" aria-current="page" href="/admin_dashboard">Dashboard</a>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                show management
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="/create_show">create_show</a></li>
-                                <li><a class="dropdown-item" href="/delete_show">delete_show</a></li>
-                                <li><a class="dropdown-item" href="/update_show">update_show</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                aria-expanded="false">
-                                venue management
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="/create_venue">create_venue</a></li>
-                                <li><a class="dropdown-item" href="/delete_venue">delete_venue</a></li>
-                                <li><a class="dropdown-item" href="/update_venue">update_venue</a></li>
-                            </ul>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="/summary">Summary</a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="/logout"><button class="btn btn-danger">Logout</button></a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+            <a class="navbar-brand" href="/">Influencer Engagement and Sponsership Coordination Platform</a>
         </div>
     </nav>
     <div style="margin-top: 5%; margin-left: 5%; margin-right: 5%;">
         <h1>Summary</h1>
-        <h6>Booked tickets:X; Venue names:Y</h6>
+        <h6>Total Ad Requests:X; Campaign names:Y</h6>
         <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
     </div>
 </body>
 <script>
-    venues_for_chart={{venues_json|tojson|safe}}
-    // console.log(venues_for_chart)
+    campaigns_for_chart={{campaigns_json|tojson|safe}}
+    // console.log(campaigns_for_chart)
     xVals=[]
     yVals=[]
-    venues_for_chart.forEach(venue => {
-        xVals.push(venue.venue_name);
-        var num_tickets=0
-        venue.venue_tickets.forEach(ticket => {
-            console.log(ticket)
-            num_tickets+=parseInt(ticket.ticket_num_tickets)
-            console.log(ticket.ticket_num_tickets)
+    campaigns_for_chart.forEach(campaign => {
+        xVals.push(campaign.campaign_name);
+        var num_adrequests=0
+        campaign.campaign_adrequests.forEach(adrequest => {
+            console.log(adrequest)
+            num_adrequests+=parseInt(adrequest.adrequest_num_adrequests)
+            console.log(adrequest.adrequest_num_adrequests)
         });
-        yVals.push(num_tickets)
+        yVals.push(num_adrequests)
     });
     console.log(yVals)
-
-    
 
     new Chart("myChart", {
       type: "bar",
@@ -100,20 +52,6 @@
         }],
       },
     });
-
-
-//         const xValues = ["Italy", "France", "Spain", "USA", "Argentina"];
-// const yValues = [55, 49, 44, 24, 15];
-
-// new Chart("myChart", {
-//   type: "bar",
-//   data: {
-//     labels: xValues,
-//     datasets: [{
-//       data: yValues
-//     }]
-//   },
-// });
 
 </script>
 

@@ -87,12 +87,8 @@ def admin_dashboard():
 @jwt_required()
 def influencer_dashboard():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
-        print("user-----",logged_user)
-        influencer = Influencer.query.filter_by(name=logged_user).first()
+        influencer = Influencer.query.filter_by(name=current_user["username"]).first()
         print("influ----",influencer)
         if not influencer:
             return "Influencer not found", 404
@@ -100,7 +96,7 @@ def influencer_dashboard():
     
         active_campaigns = Campaign.query.filter_by(visibility='Public',status='Active').all()
         print("active_campaigns----",active_campaigns)
-        new_requests = AdRequest.query.filter_by(influencer_id=influencer.influencer_id, status='Pending',ad_req_by_sponser=True).all()
+        new_requests = AdRequest.query.filter_by(influencer_id=influencer.influencer_id, status='Pending',ad_request_by_sponser=True).all()
 
     return render_template("influencer_dashboard.html", influencer=influencer, active_campaigns=active_campaigns, new_requests=new_requests)
 
@@ -115,7 +111,6 @@ def campaign_details(campaign_id):
 @jwt_required()
 def send_ad_request(campaign_id):
     current_user = get_jwt_identity()
-    global logged_user
     if request.method == "POST":
         message = request.form.get("message")
         sponser_camps = Sponser_camp.query.filter_by(campaign_id=campaign_id).all()
@@ -123,7 +118,7 @@ def send_ad_request(campaign_id):
             sponser_ids = [sponser_camp.sponser_id for sponser_camp in sponser_camps]
             # Create ad requests for each sponsor
             campaign = Campaign.query.get_or_404(campaign_id)
-            influencer = Influencer.query.filter_by(name=logged_user).first()
+            influencer = Influencer.query.filter_by(name=current_user["username"]).first()
 
             for sponsor in sponser_ids:
                 ad_request = AdRequest(
@@ -169,11 +164,8 @@ def report_request(request_id):
 @jwt_required()
 def sponser_dashboard():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
-    
-    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    print("---curr---",current_user)
+    sponsor = Sponser.query.filter_by(company_name=current_user['username']).first()
     if not sponsor:
         return "Sponsor not found", 404
 
@@ -234,9 +226,6 @@ def sponser_register():
 @jwt_required()
 def create_campaign():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         return render_template("create_campaign.html")
     if request.method=="POST":
@@ -259,9 +248,6 @@ def create_campaign():
 @jwt_required()
 def delete_campaign():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         campaigns=Campaign.query.all()
         return render_template("delete_campaign.html", campaigns=campaigns)
@@ -276,9 +262,6 @@ def delete_campaign():
 @jwt_required()
 def update_campaign():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         campaigns=Campaign.query.all()
         return render_template("update_campaign.html", campaigns=campaigns)
@@ -311,9 +294,6 @@ def update_campaign():
 @jwt_required()
 def add_sponser():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         return render_template("add_sponser.html")
     if request.method=="POST":
@@ -332,9 +312,6 @@ def add_sponser():
 @jwt_required()
 def delete_sponser():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         sponsers=Sponser.query.all()
         return render_template("delete_sponser.html", sponsers=sponsers)
@@ -349,9 +326,6 @@ def delete_sponser():
 @jwt_required()
 def update_sponser():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     if request.method=="GET":
         sponsers=Sponser.query.all()
         return render_template("update_sponser.html", sponsers=sponsers)
@@ -374,9 +348,8 @@ def update_sponser():
 @jwt_required()
 def assign_camp_spon():
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
+    if current_user["roles"] != "Admin":
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
     if request.method == 'GET':
         # Fetch all campaigns and sponsors
         campaigns = Campaign.query.all()
@@ -440,12 +413,9 @@ def search_influ(campaign_id):
 def view_influ_profile(influencer_id,campaign_id):
     current_user = get_jwt_identity()
     try:
-        print("influ-------", influencer_id)
-        print("camp-------", campaign_id)
         # Fetch the influencer details from the database
         influencer = Influencer.query.get_or_404(influencer_id)
         campaign = Campaign.query.get_or_404(campaign_id)
-        print("campaign-----", campaign)
         return render_template("view_influ_profile.html", influencer=influencer, campaign=campaign)
     except Exception as e:
         return e  # Redirect to a default page if there's an error
@@ -454,16 +424,13 @@ def view_influ_profile(influencer_id,campaign_id):
 @jwt_required()
 def send_ad_request_influ(influencer_id, campaign_id):
     current_user = get_jwt_identity()
-    global logged_user
-    if not logged_user:
-        return redirect(url_for("user_login"))
     
     if request.method == 'POST':
         ad_name = request.form.get('ad_name')
         requirements = request.form.get('requirements')
         payment_amount = request.form.get('payment_amount')
         messages = request.form.get('messages')
-        sponser_id=Sponser.query.filter_by(company_name=logged_user).first().sponser_id
+        sponser_id=Sponser.query.filter_by(company_name=current_user['username']).first().sponser_id
 
         
         # Assuming you have an AdRequest model and a relationship set up
@@ -493,12 +460,8 @@ def send_ad_request_influ(influencer_id, campaign_id):
 @jwt_required()
 def ad_requests():
     current_user = get_jwt_identity()
-    global logged_user
     
-    if not logged_user:
-        return redirect(url_for('user_login'))  # Redirect if not logged in
-    
-    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    sponsor = Sponser.query.filter_by(company_name=current_user['username']).first()
     print(sponsor)
     if not sponsor:
         return redirect(url_for('user_login'))  # Redirect if not a sponsor
@@ -511,12 +474,8 @@ def ad_requests():
 @jwt_required()
 def accept_ad_request(ad_request_id):
     current_user = get_jwt_identity()
-    global logged_user
     
-    if not logged_user:
-        return redirect(url_for('user_login'))  # Redirect if not a sponsor
-    
-    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    sponsor = Sponser.query.filter_by(company_name=current_user['username']).first()
 
     ad_request = AdRequest.query.get_or_404(ad_request_id)
     if ad_request.sponser_id != sponsor.sponser_id:
@@ -529,13 +488,8 @@ def accept_ad_request(ad_request_id):
 @app.route('/reject_ad_request/<int:ad_request_id>')
 @jwt_required()
 def reject_ad_request(ad_request_id):
-    current_user = get_jwt_identity()
-    global logged_user
-    
-    if not logged_user:
-        return redirect(url_for('user_login'))  # Redirect if not a sponsor
-    
-    sponsor = Sponser.query.filter_by(company_name=logged_user).first()
+    current_user = get_jwt_identity()    
+    sponsor = Sponser.query.filter_by(company_name=current_user['username']).first()
 
     ad_request = AdRequest.query.get_or_404(ad_request_id)
     if ad_request.sponser_id != sponsor.sponser_id:
@@ -577,3 +531,15 @@ def logout():
     response = make_response(redirect(url_for("user_login")))
     unset_jwt_cookies(response)
     return response
+
+
+@app.route("/summary", methods=["GET"])
+@jwt_required()
+def summary():
+    current_user = get_jwt_identity()
+    if current_user["roles"] != "Admin":
+        return jsonify({"message": "Access forbidden: Admins only"}), 403
+
+    campaigns=Campaign.query.all()
+    campaigns_json=[campaign.to_json() for campaign in campaigns]
+    return render_template("summary.html", campaigns=campaigns, campaigns_json=campaigns_json)

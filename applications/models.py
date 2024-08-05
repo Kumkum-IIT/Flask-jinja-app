@@ -27,6 +27,18 @@ class Influencer(db.Model):
     def __repr__(self):
         return f'<Influencer {self.name}>'
 
+    def to_json(self):
+        return {
+            'influencer_id': self.influencer_id,
+            'name': self.name,
+            'image_url': self.image_url,
+            'niche': self.niche,
+            'reach': self.reach,
+            'followers': self.followers,
+            'rating': float(self.rating) if self.rating is not None else None,
+            'earnings': self.earnings
+        }
+
 class AdRequest(db.Model):
     ad_request_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     ad_name= db.Column(db.String(50), nullable=False)
@@ -42,6 +54,21 @@ class AdRequest(db.Model):
 
     def __repr__(self):
         return f'<AdRequest {self.ad_request_id}>'
+
+    def to_json(self):
+        return {
+            'ad_request_id': self.ad_request_id,
+            'ad_name': self.ad_name,
+            'campaign_id': self.campaign_id,
+            'sponser_id': self.sponser_id,
+            'influencer_id': self.influencer_id,
+            'messages': self.messages,
+            'requirements': self.requirements,
+            'payment_amount': self.payment_amount,
+            'status': self.status,
+            'ad_request_by_sponser': self.ad_request_by_sponser,
+            'ad_request_by_influencer': self.ad_request_by_influencer
+        }
 
 class Campaign(db.Model):
     campaign_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
@@ -61,6 +88,19 @@ class Campaign(db.Model):
     def __repr__(self):
         return f'<Campaign {self.campaign_name}>'
 
+    def to_json(self):
+        return {
+            'campaign_id': self.campaign_id,
+            'campaign_name': self.campaign_name,
+            'description': self.description,
+            'start_date': self.start_date,
+            'end_date': self.end_date,
+            'budget': float(self.budget),
+            'visibility': self.visibility,
+            'goals': self.goals,
+            'status': self.status
+        }
+
 class Sponser(db.Model):
     sponser_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     company_name = db.Column(db.String(50), nullable=False)
@@ -73,6 +113,14 @@ class Sponser(db.Model):
 
     def __repr__(self):
         return f'<Sponser {self.company_name}>'
+
+    def to_json(self):
+        return {
+            'sponser_id': self.sponser_id,
+            'company_name': self.company_name,
+            'industry': self.industry,
+            'budget': self.budget
+        }
 
 class Sponser_camp(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
