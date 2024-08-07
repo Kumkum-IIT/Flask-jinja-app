@@ -200,9 +200,7 @@ def influ_register():
     return render_template('influ_register.html')
 
 @app.route("/sponser_register", methods=["GET", "POST"])
-@jwt_required()
 def sponser_register():
-    current_user = get_jwt_identity()
     if request.method=="GET":
         return render_template("sponser_register.html")
     if request.method=="POST":
@@ -533,13 +531,161 @@ def logout():
     return response
 
 
-@app.route("/summary", methods=["GET"])
+# @app.route("/summary", methods=["GET"])
+
+@app.route("/summary")
 @jwt_required()
 def summary():
-    current_user = get_jwt_identity()
-    if current_user["roles"] != "Admin":
-        return jsonify({"message": "Access forbidden: Admins only"}), 403
+    # Fetch the data
+    campaigns = Campaign.query.all()
+    sponser_camps = Sponser_camp.query.all()
 
-    campaigns=Campaign.query.all()
-    campaigns_json=[campaign.to_json() for campaign in campaigns]
-    return render_template("summary.html", campaigns=campaigns, campaigns_json=campaigns_json)
+    # Prepare data for chart
+    campaign_sponsor_counts = {}
+    for sponser_camp in sponser_camps:
+        campaign_id = sponser_camp.campaign_id
+        if campaign_id not in campaign_sponsor_counts:
+            campaign_sponsor_counts[campaign_id] = 0
+        campaign_sponsor_counts[campaign_id] += 1
+
+    campaigns_data = []
+    for campaign in campaigns:
+        campaigns_data.append({
+            'campaign_name': campaign.campaign_name,
+            'sponsor_count': campaign_sponsor_counts.get(campaign.campaign_id, 0)
+        })
+
+    total_campaigns = len(campaigns)
+    total_sponsors = len(set(s.sponser_id for s in sponser_camps))
+
+    return render_template(
+        "summary.html",
+        campaigns_json=campaigns_data,
+        total_campaigns=total_campaigns,
+        total_sponsors=total_sponsors
+    )
+@app.route("/update_influ_profile", methods=["GET", "POST"])
+@jwt_required()
+def update_influ_profile():
+    current_user = get_jwt_identity()
+    print("curr----------",current_user["username"])
+    # Fetch the influencer from the database
+    influencer = Influencer.query.filter_by(name=current_user["username"]).first()
+    
+    if not influencer:
+        return jsonify({"error": "Influencer not found"}), 404
+
+    if request.method == "POST":
+        # Get data from the form
+        name = request.form.get("name")
+        image_url = request.form.get("image_url")
+        niche = request.form.get("niche")
+        reach = request.form.get("reach")
+        followers = request.form.get("followers")
+        rating = request.form.get("rating")
+        earnings = request.form.get("earnings")
+
+        # Update influencer details
+        influencer.name = name if name else influencer.name
+        influencer.image_url = image_url if image_url else influencer.image_url
+        influencer.niche = niche if niche else influencer.niche
+        influencer.reach = float(reach) if reach else influencer.reach
+        influencer.followers = int(followers) if followers else influencer.followers
+        influencer.rating = float(rating) if rating else influencer.rating
+        influencer.earnings = float(earnings) if earnings else influencer.earnings
+
+        try:
+            db.session.commit()
+            flash("Profile updated successfully!", "success")
+            return redirect(url_for('influencer_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f"Error updating profile: {str(e)}", "danger")
+    
+    return render_template("influencer_dashboard.html", influencer=influencer)
+
+
+@app.route("/stats/<int:influencer_id>")
+@jwt_required()
+def stats(influencer_id):
+    print(f"Requested influencer_id: {influencer_id}")  # Debugging line
+
+    influencer = Influencer.query.get(influencer_id)
+    if not influencer:
+        return "Influencer not found", 404
+
+    # Get all ad requests for the given influencer
+    ad_requests = AdRequest.query.filter_by(influencer_id=influencer_id).all()
+
+    # Get all sponsor IDs associated with this influencer
+    sponsor_ids = {ad.sponser_id for ad in ad_requests}
+
+    # Fetch ad requests for these sponsors
+    ad_requests = AdRequest.query.filter(AdRequest.sponser_id.in_(sponsor_ids)).all()
+
+    # Get all campaigns for these sponsors
+    campaign_ids = {ad.campaign_id for ad in ad_requests}
+    campaigns = Campaign.query.filter(Campaign.campaign_id.in_(campaign_ids)).all()
+
+    # Count requests by campaign visibility
+    public_requests = sum(1 for ad in ad_requests if Campaign.query.get(ad.campaign_id).visibility == 'Public')
+    private_requests = sum(1 for ad in ad_requests if Campaign.query.get(ad.campaign_id).visibility == 'Private')
+
+    # Count campaigns by visibility (global counts)
+    public_campaigns_count = Campaign.query.filter_by(visibility='Public').count()
+    private_campaigns_count = Campaign.query.filter_by(visibility='Private').count()
+
+    # Prepare data for chart
+    chart_data = {
+        'labels': ['Public Campaigns', 'Private Campaigns'],
+        'data': [public_requests, private_requests]
+    }
+
+    # Fetch influencer details
+    influencer_name = influencer.name if influencer else "Unknown"
+
+    return render_template(
+        "influencer_stats.html",
+        chart_data=chart_data,
+        sponsor_name=influencer_name,
+        public_campaigns_count=public_campaigns_count,
+        private_campaigns_count=private_campaigns_count
+    )
+
+@app.route("/sponser_summary/<int:sponser_id>")
+@jwt_required()
+def sponser_summary(sponser_id):
+    # Fetch sponser
+    sponser = Sponser.query.get(sponser_id)
+    if not sponser:
+        return "Sponser not found", 404
+
+    # Fetch campaigns associated with the sponser
+    campaign_ids = [sc.campaign_id for sc in Sponser_camp.query.filter_by(sponser_id=sponser_id).all()]
+    campaigns = Campaign.query.filter(Campaign.campaign_id.in_(campaign_ids)).all()
+
+    # Count campaigns by status
+    flagged_count = sum(1 for campaign in campaigns if campaign.status == 'Flagged')
+    active_count = sum(1 for campaign in campaigns if campaign.status == 'Active')
+    pending_count = sum(1 for campaign in campaigns if campaign.status == 'Pending')
+
+    # Prepare data for chart
+    influencer_data = {}
+    for campaign in campaigns:
+        ad_requests = AdRequest.query.filter_by(campaign_id=campaign.campaign_id, sponser_id=sponser_id).all()
+        influencers = {Influencer.query.get(ad.influencer_id).name for ad in ad_requests}
+        influencer_data[campaign.campaign_name] = list(influencers)
+
+    chart_data = {
+        'campaigns': list(influencer_data.keys()),
+        'influencers': [', '.join(influencers) for influencers in influencer_data.values()]
+    }
+
+    return render_template(
+        "sponser_summary.html",
+        flagged_count=flagged_count,
+        active_count=active_count,
+        pending_count=pending_count,
+        chart_data=chart_data,
+        sponser_name=sponser.company_name
+    )

@@ -4,55 +4,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
-        integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
-        integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
-        crossorigin="anonymous"></script>
-        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+    <title>Admin Summary</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            margin-top: 5%;
+        }
+        .card {
+            margin-bottom: 20px;
+        }
+    </style>
 </head>
 
 <body>
     <nav class="navbar bg-body-tertiary fixed-top">
         <div class="container-fluid">
-            <a class="navbar-brand" href="/">Influencer Engagement and Sponsership Coordination Platform</a>
+            <a class="navbar-brand" href="/">Influencer Engagement and Sponsorship Coordination Platform</a>
         </div>
     </nav>
-    <div style="margin-top: 5%; margin-left: 5%; margin-right: 5%;">
-        <h1>Summary</h1>
-        <h6>Total Ad Requests:X; Campaign names:Y</h6>
-        <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
+
+    <div class="container">
+        <h1>Admin Summary</h1>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Overall Statistics</h5>
+                <p class="card-text">Total Campaigns: {{ total_campaigns }}</p>
+                <p class="card-text">Total Sponsors: {{ total_sponsors }}</p>
+            </div>
+        </div>
+
+        <div>
+            <h5>Campaigns and Sponsors Summary</h5>
+            <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
+        </div>
     </div>
-</body>
-<script>
-    campaigns_for_chart={{campaigns_json|tojson|safe}}
-    // console.log(campaigns_for_chart)
-    xVals=[]
-    yVals=[]
-    campaigns_for_chart.forEach(campaign => {
-        xVals.push(campaign.campaign_name);
-        var num_adrequests=0
-        campaign.campaign_adrequests.forEach(adrequest => {
-            console.log(adrequest)
-            num_adrequests+=parseInt(adrequest.adrequest_num_adrequests)
-            console.log(adrequest.adrequest_num_adrequests)
+
+    <script>
+        // Get campaign data from Flask
+        const campaigns_for_chart = {{ campaigns_json|tojson|safe }};
+        
+        // Prepare data for Chart.js
+        const xVals = [];
+        const yVals = [];
+        
+        campaigns_for_chart.forEach(campaign => {
+            xVals.push(campaign.campaign_name);
+            yVals.push(campaign.sponsor_count);
         });
-        yVals.push(num_adrequests)
-    });
-    console.log(yVals)
 
-    new Chart("myChart", {
-      type: "bar",
-      data: {
-        labels: xVals,
-        datasets: [{
-          data: yVals
-        }],
-      },
-    });
-
-</script>
+        // Create the Chart.js bar chart
+        new Chart("myChart", {
+            type: "bar",
+            data: {
+                labels: xVals,
+                datasets: [{
+                    label: "Number of Sponsors",
+                    data: yVals,
+                    backgroundColor: "rgba(75, 192, 192, 0.2)",
+                    borderColor: "rgba(75, 192, 192, 1)",
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: "Campaigns"
+                        }
+                    },
+                    y: {
+                        title: {
+                            display: true,
+                            text: "Number of Sponsors"
+                        },
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    </script>
+</body>
 
 </html>
