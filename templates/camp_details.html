@@ -11,7 +11,81 @@
             crossorigin="anonymous"></script>
     <style>
         body {
-            padding-top: 60px; /* Adjust this value based on the height of your navbar */
+            padding-top: 70px; /* Adjust this value based on the height of your navbar */
+            background-color: #f8f9fa; /* Light grey background for better contrast */
+        }
+
+        .navbar-brand {
+            font-weight: bold;
+        }
+
+        .navbar-brand:hover {
+            color: #0056b3;
+        }
+
+        .card {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Soft shadow for cards */
+        }
+
+        .card-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+
+        .card-subtitle {
+            font-size: 1.1rem;
+            color: #6c757d; /* Soft grey for subtitle */
+        }
+
+        .card-text strong {
+            color: #343a40; /* Darker text for labels */
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+        }
+
+        textarea:focus {
+            border-color: #007bff;
+            outline: none;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            border-color: #007bff;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+            border-color: #004085;
+        }
+
+        .btn-danger {
+            background-color: #dc3545;
+            border-color: #dc3545;
+        }
+
+        .btn-danger:hover {
+            background-color: #c82333;
+            border-color: #bd2130;
+        }
+
+        .card-footer a.btn-primary {
+            background-color: #6c757d; /* Different color for back button */
+            border-color: #6c757d;
+        }
+
+        .card-footer a.btn-primary:hover {
+            background-color: #5a6268;
+            border-color: #545b62;
+        }
+
+        .container.mt-4 {
+            padding-bottom: 30px; /* Adding space at the bottom */
         }
     </style>
 </head>
@@ -35,12 +109,6 @@
                         <a class="nav-link" href="/influencer_dashboard">Dashboard</a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="/camp_requests">Find Campaigns</a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/stats">Statistics</a>
-                    </li>
-                    <li class="nav-item">
                         <a href="/logout"><button class="btn btn-danger">Logout</button></a>
                     </li>
                 </ul>
@@ -51,7 +119,6 @@
 
 <div class="container mt-4">
     <div class="row">
-        
         <!-- Campaign Details -->
         <div class="col-md-12">
             <div class="card mb-4">
@@ -67,8 +134,10 @@
 
                     <!-- Send Request Form -->
                     <form action="{{ url_for('send_ad_request', campaign_id=campaign.campaign_id) }}" method="post">
-                        <h4>Messages:</h4>
-                        <textarea name="message" required></textarea><br><br>
+                        <div class="mb-3">
+                            <h4>Messages:</h4>
+                            <textarea name="message" required placeholder="Enter your message..."></textarea>
+                        </div>
                         <button type="submit" class="btn btn-primary">Send Request to Sponsors</button>
                     </form>
                 </div><br>

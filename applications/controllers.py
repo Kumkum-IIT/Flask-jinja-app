@@ -134,9 +134,9 @@ def send_ad_request(campaign_id):
                 )
                 db.session.add(ad_request)
             
-            db.session.commit()
+                db.session.commit()
         
-    return redirect(url_for('campaign_details', campaign_id=campaign_id))
+    return redirect(url_for('influencer_dashboard', campaign_id=campaign_id))
 
 
 @app.route("/accept_request/<int:request_id>", methods=["POST"])
@@ -175,28 +175,28 @@ def sponser_dashboard():
     return render_template("sponser_dashboard.html", sponsor=sponsor, campaigns=campaigns)
 
 @app.route("/influ_register", methods=["GET", "POST"])
-@jwt_required()
 def influ_register():
-    current_user = get_jwt_identity()
     if request.method=="GET":
         return render_template("influ_register.html")
     if request.method=="POST":
         name=request.form.get("name")
-        password=request.form.get("password")  
-        category=request.form.get("category") 
+        password=request.form.get("password") 
         niche=request.form.get("niche") 
-        reach=request.form.get("reach") 
-        followers=request.form.get("followers")    
+        followers=request.form.get("followers") 
+        ratings=request.form.get("ratings")
+        earnings=request.form.get("earnings")
+
         this_user = Influencer.query.filter_by(name = name).first()
         if this_user:
             return "Influencer already exists!"
         else:
-            new_influ = Influencer(name = name, password = password, category = category, niche = niche, reach= reach, followers=followers)
+            new_influ = Influencer(name = name, password = password, niche = niche, followers=followers,rating=ratings,earnings=earnings)
             db.session.add(new_influ)
             new_user = User(username = name, password = password,roles="Influencer")
+            flash("Registered successfully")
             db.session.add(new_user)
             db.session.commit()
-            return redirect(url_for("/")) 
+            return redirect(url_for("home")) 
     return render_template('influ_register.html')
 
 @app.route("/sponser_register", methods=["GET", "POST"])
@@ -215,6 +215,7 @@ def sponser_register():
             new_sponser = Sponser(company_name = company_name, password = password, industry = industry, budget = budget)
             db.session.add(new_sponser)
             new_user = User(username = company_name, password = password,roles="Sponser", approved_by_admin=False)
+            flash("Registered successfully")
             db.session.add(new_user)
             db.session.commit()
             return redirect('/') 
@@ -224,123 +225,150 @@ def sponser_register():
 @jwt_required()
 def create_campaign():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        return render_template("create_campaign.html")
-    if request.method=="POST":
-        # extract the data from request
-        campaign_name=request.form.get("campaign_name")
-        budget=request.form.get("budget")
-        start_date=request.form.get("start_date")
-        end_date=request.form.get("end_date")
-        description=request.form.get("description")
-        visibility=request.form.get("visibility")
-        goals=request.form.get("goals")
-        status=request.form.get("status")
-        # create new campaign in db
-        new_campaign=Campaign(campaign_name=campaign_name,description=description,end_date=end_date, start_date=start_date, budget=budget,visibility=visibility,goals=goals,status=status)
-        db.session.add(new_campaign)
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+    
+    if current_user["roles"] == "Sponser" :
+        if request.method == "GET":
+            return render_template("create_campaign.html")
+        
+        if request.method == "POST":
+            # Extract the data from the request
+            campaign_name = request.form.get("campaign_name")
+            budget = request.form.get("budget")
+            start_date = request.form.get("start_date")
+            end_date = request.form.get("end_date")
+            description = request.form.get("description")
+            visibility = request.form.get("visibility")
+            goals = request.form.get("goals")
+            status = request.form.get("status")
+            
+            existing_campaign = Campaign.query.filter_by(campaign_name=campaign_name).first()
+            if existing_campaign:
+                return render_template("create_campaign.html", message="This campaign already exists")
+            else:
+                new_campaign = Campaign(
+                    campaign_name=campaign_name,
+                    description=description,
+                    end_date=end_date,
+                    start_date=start_date,
+                    budget=budget,
+                    visibility=visibility,
+                    goals=goals,
+                    status=status
+                )
+                db.session.add(new_campaign)
+                db.session.commit()
+                return redirect(url_for("sponser_dashboard"))
+    
+    # If the user is not authorized to create a campaign
+    return "Unauthorized", 403
 
 @app.route("/delete_campaign", methods=["GET", "POST"])
 @jwt_required()
 def delete_campaign():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        campaigns=Campaign.query.all()
-        return render_template("delete_campaign.html", campaigns=campaigns)
-    if request.method=="POST":
-        campaign_id=request.form.get("campaign_id")
-        campaign_to_delete=Campaign.query.get(campaign_id)
-        db.session.delete(campaign_to_delete)
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+    if current_user["roles"] == "Sponser":
+        if request.method=="GET":
+            campaigns=Campaign.query.all()
+            return render_template("delete_campaign.html", campaigns=campaigns)
+        if request.method=="POST":
+            campaign_id=request.form.get("campaign_id")
+            campaign_to_delete=Campaign.query.get(campaign_id)
+            db.session.delete(campaign_to_delete)
+            db.session.commit()
+            return redirect(url_for("delete_campaign"))
+    return "Unauthorized", 403
 
 @app.route("/update_campaign", methods=["GET", "POST"])
 @jwt_required()
 def update_campaign():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        campaigns=Campaign.query.all()
-        return render_template("update_campaign.html", campaigns=campaigns)
-    if request.method=="POST":
-        campaign_name=request.form.get("campaign_name")
-        campaign_id=request.form.get("campaign_id")
-        budget=request.form.get("budget")
-        start_date=request.form.get("start_date")
-        end_date=request.form.get("end_date")
-        description=request.form.get("description")
-        visibility=request.form.get("visibility")
-        goals=request.form.get("goals")
-        status=request.form.get("status")
-        
-        # update new campaign in db
-        campaign_to_update=Campaign.query.get(campaign_id)
-        campaign_to_update.campaign_name=campaign_name
-        campaign_to_update.description=description
-        campaign_to_update.end_date=end_date
-        campaign_to_update.start_date=start_date
-        campaign_to_update.budget=budget
-        campaign_to_update.visibility=visibility
-        campaign_to_update.goals=goals
-        campaign_to_update.status=status
+    if current_user["roles"] == "Sponser":
+        if request.method=="GET":
+            campaigns=Campaign.query.all()
+            return render_template("update_campaign.html", campaigns=campaigns)
+        if request.method=="POST":
+            campaign_name=request.form.get("campaign_name")
+            campaign_id=request.form.get("campaign_id")
+            budget=request.form.get("budget")
+            start_date=request.form.get("start_date")
+            end_date=request.form.get("end_date")
+            description=request.form.get("description")
+            visibility=request.form.get("visibility")
+            goals=request.form.get("goals")
+            status=request.form.get("status")
+            
+            # update new campaign in db
+            campaign_to_update=Campaign.query.get(campaign_id)
+            campaign_to_update.campaign_name=campaign_name
+            campaign_to_update.description=description
+            campaign_to_update.end_date=end_date
+            campaign_to_update.start_date=start_date
+            campaign_to_update.budget=budget
+            campaign_to_update.visibility=visibility
+            campaign_to_update.goals=goals
+            campaign_to_update.status=status
 
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+            db.session.commit()
+            return redirect(url_for("update_campaign"))
+
+    return "Unauthorized", 403
 
 @app.route("/add_sponser", methods=["GET", "POST"])
 @jwt_required()
 def add_sponser():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        return render_template("add_sponser.html")
-    if request.method=="POST":
-        # extract the data from request
-        company_name=request.form.get("company_name")
-        budget=request.form.get("budget")
-        industry=request.form.get("industry")
-        
-        # create new sponser in db
-        new_sponser=Sponser(company_name=company_name, industry=industry, budget=budget)
-        db.session.add(new_sponser)
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+    if current_user["roles"] == "Admin":
+        if request.method=="GET":
+            return render_template("add_sponser.html")
+        if request.method=="POST":
+            # extract the data from request
+            company_name=request.form.get("company_name")
+            budget=request.form.get("budget")
+            industry=request.form.get("industry")
+            
+            # create new sponser in db
+            new_sponser=Sponser(company_name=company_name, industry=industry, budget=budget)
+            db.session.add(new_sponser)
+            db.session.commit()
+            return redirect(url_for("admin_dashboard"))
 
 @app.route("/delete_sponser", methods=["GET", "POST"])
 @jwt_required()
 def delete_sponser():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        sponsers=Sponser.query.all()
-        return render_template("delete_sponser.html", sponsers=sponsers)
-    if request.method=="POST":
-        sponser_id=request.form.get("sponser_id")
-        sponser_to_delete=Sponser.query.get(sponser_id)
-        db.session.delete(sponser_to_delete)
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+    if current_user["roles"] == "Admin":
+        if request.method=="GET":
+            sponsers=Sponser.query.all()
+            return render_template("delete_sponser.html", sponsers=sponsers)
+        if request.method=="POST":
+            sponser_id=request.form.get("sponser_id")
+            sponser_to_delete=Sponser.query.get(sponser_id)
+            db.session.delete(sponser_to_delete)
+            db.session.commit()
+            return redirect(url_for("delete_sponser"))
 
 @app.route("/update_sponser", methods=["GET", "POST"])
 @jwt_required()
 def update_sponser():
     current_user = get_jwt_identity()
-    if request.method=="GET":
-        sponsers=Sponser.query.all()
-        return render_template("update_sponser.html", sponsers=sponsers)
-    if request.method=="POST":
-        company_name=request.form.get("comapany_name")
-        sponser_id=request.form.get("sponser_id")
-        budget=request.form.get("budget")
-        industry=request.form.get("industry")
-        
-        # update new sponser in db
-        sponser_to_update=Sponser.query.get(sponser_id)
-        sponser_to_update.company_name=company_name
-        sponser_to_update.industry=industry       
-        sponser_to_update.budget=budget        
+    if current_user["roles"] == "Admin":
+        if request.method=="GET":
+            sponsers=Sponser.query.all()
+            return render_template("update_sponser.html", sponsers=sponsers)
+        if request.method=="POST":
+            company_name=request.form.get("comapany_name")
+            sponser_id=request.form.get("sponser_id")
+            budget=request.form.get("budget")
+            industry=request.form.get("industry")
+            
+            # update new sponser in db
+            sponser_to_update=Sponser.query.get(sponser_id)
+            sponser_to_update.company_name=company_name
+            sponser_to_update.industry=industry       
+            sponser_to_update.budget=budget        
 
-        db.session.commit()
-        return redirect(url_for("admin_dashboard"))
+            db.session.commit()
+            return redirect(url_for("update_sponser"))
 
 @app.route("/assign_camp_spon", methods=["GET", "POST"])
 @jwt_required()
@@ -519,28 +547,29 @@ def approve_user(username):
 def reject_user(username):
     current_user = get_jwt_identity()
     user = User.query.get(username)
+    sponsor = Sponser.query.filter_by(company_name=username).first()
     if user:
         db.session.delete(user)
+        db.session.delete(sponsor)
         db.session.commit()
     return redirect(url_for('approve_sponsors'))
 
 @app.route("/logout", methods=["GET"])
 def logout():
-    response = make_response(redirect(url_for("user_login")))
+    response = make_response(redirect(url_for("home")))
     unset_jwt_cookies(response)
     return response
 
 
-# @app.route("/summary", methods=["GET"])
-
 @app.route("/summary")
 @jwt_required()
 def summary():
-    # Fetch the data
+    # Fetch data
     campaigns = Campaign.query.all()
     sponser_camps = Sponser_camp.query.all()
-
-    # Prepare data for chart
+    ad_requests = AdRequest.query.all()
+    
+    # Calculate statistics
     campaign_sponsor_counts = {}
     for sponser_camp in sponser_camps:
         campaign_id = sponser_camp.campaign_id
@@ -557,13 +586,36 @@ def summary():
 
     total_campaigns = len(campaigns)
     total_sponsors = len(set(s.sponser_id for s in sponser_camps))
+    total_active_users = len(Influencer.query.all()) + len(Sponser.query.all())  # Assuming all are active
+    public_campaigns = len([c for c in campaigns if c.visibility == 'public'])
+    private_campaigns = len([c for c in campaigns if c.visibility == 'private'])
+    total_ad_requests = len(ad_requests)
+    pending_ad_requests = len([r for r in ad_requests if r.status == 'Pending'])
+    approved_ad_requests = len([r for r in ad_requests if r.status == 'Approved'])
+    rejected_ad_requests = len([r for r in ad_requests if r.status == 'Rejected'])
+    
+    # Note: Set flagged counts to 0 if not applicable
+    flagged_sponsors = 0
+    flagged_influencers = 0
 
     return render_template(
         "summary.html",
         campaigns_json=campaigns_data,
         total_campaigns=total_campaigns,
-        total_sponsors=total_sponsors
+        total_sponsors=total_sponsors,
+        total_active_users=total_active_users,
+        public_campaigns=public_campaigns,
+        private_campaigns=private_campaigns,
+        total_ad_requests=total_ad_requests,
+        pending_ad_requests=pending_ad_requests,
+        approved_ad_requests=approved_ad_requests,
+        rejected_ad_requests=rejected_ad_requests,
+        flagged_sponsors=flagged_sponsors,
+        flagged_influencers=flagged_influencers
     )
+
+
+
 @app.route("/update_influ_profile", methods=["GET", "POST"])
 @jwt_required()
 def update_influ_profile():
@@ -571,25 +623,24 @@ def update_influ_profile():
     print("curr----------",current_user["username"])
     # Fetch the influencer from the database
     influencer = Influencer.query.filter_by(name=current_user["username"]).first()
-    
+
+    if request.method == "GET":
+        return render_template("update_influ_profile.html", influencer=influencer)
+
     if not influencer:
         return jsonify({"error": "Influencer not found"}), 404
 
     if request.method == "POST":
         # Get data from the form
         name = request.form.get("name")
-        image_url = request.form.get("image_url")
         niche = request.form.get("niche")
-        reach = request.form.get("reach")
         followers = request.form.get("followers")
         rating = request.form.get("rating")
         earnings = request.form.get("earnings")
 
         # Update influencer details
         influencer.name = name if name else influencer.name
-        influencer.image_url = image_url if image_url else influencer.image_url
         influencer.niche = niche if niche else influencer.niche
-        influencer.reach = float(reach) if reach else influencer.reach
         influencer.followers = int(followers) if followers else influencer.followers
         influencer.rating = float(rating) if rating else influencer.rating
         influencer.earnings = float(earnings) if earnings else influencer.earnings
@@ -602,7 +653,7 @@ def update_influ_profile():
             db.session.rollback()
             flash(f"Error updating profile: {str(e)}", "danger")
     
-    return render_template("influencer_dashboard.html", influencer=influencer)
+    return render_template("update_influ_profile.html", influencer=influencer)
 
 
 @app.route("/stats/<int:influencer_id>")
@@ -689,3 +740,53 @@ def sponser_summary(sponser_id):
         chart_data=chart_data,
         sponser_name=sponser.company_name
     )
+
+
+@app.route("/edit_adrequest/<int:ad_request_id>", methods=["GET", "POST"])
+@jwt_required()
+def edit_adrequest(ad_request_id):
+    ad_request = AdRequest.query.get_or_404(ad_request_id)
+
+    if request.method == "POST":
+        ad_request.ad_name = request.form.get('ad_name')
+        ad_request.campaign_id = request.form.get('campaign_id')
+        ad_request.sponser_id = request.form.get('sponser_id')
+        ad_request.influencer_id = request.form.get('influencer_id')
+        ad_request.messages = request.form.get('messages')
+        ad_request.requirements = request.form.get('requirements')
+        ad_request.payment_amount = request.form.get('payment_amount')
+        ad_request.status = request.form.get('status')
+        ad_request.ad_request_by_sponser = request.form.get('ad_request_by_sponser') == 'on'
+        ad_request.ad_request_by_influencer = request.form.get('ad_request_by_influencer') == 'on'
+
+        try:
+            db.session.commit()
+            flash('Ad request updated successfully!', 'success')
+            return redirect(url_for('sponser_dashboard'))
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Error updating ad request: {str(e)}', 'danger')
+
+    return render_template('edit_adrequest.html', ad_request=ad_request)
+
+@app.route('/delete_adrequest/<int:ad_request_id>', methods=['GET','POST'])
+@jwt_required()
+def delete_adrequest(ad_request_id):
+    current_user = get_jwt_identity()
+    if current_user["roles"] == "Sponser":
+        # Fetch the ad request from the database
+        print("in delete----------",ad_request_id)
+        ad_request = AdRequest.query.get_or_404(ad_request_id)
+        print("in delete----------",ad_request_id)
+        
+        # Delete the ad request
+        try:
+            db.session.delete(ad_request)
+            db.session.commit()
+            flash('Ad request deleted successfully.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            flash(f'An error occurred while deleting the ad request: {str(e)}', 'error')
+        
+        # Redirect back to the ad requests list
+        return redirect(url_for('sponser_dashboard'))  # Adjust this to the appropriate route

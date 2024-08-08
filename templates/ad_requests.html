@@ -81,7 +81,12 @@
             transition: background-color 0.3s;
             font-size: 1em;
         }
-
+        .edit {
+            background-color: #007bff; /* Blue */
+        }
+        .delete {
+            background-color: #007bff; /* Blue */
+        }
         .accept {
             background-color: #28a745;
         }
@@ -121,10 +126,13 @@
                     <p><strong>Requirements:</strong> {{ ad_request.requirements }}</p>
                     <p><strong>Payment Amount:</strong> ${{ ad_request.payment_amount }}</p>
                     <p><strong>Status:</strong> {{ ad_request.status }}</p>
+                    <a href="{{ url_for('edit_adrequest', ad_request_id=ad_request.ad_request_id) }}" class="button edit">Edit Adrequest</a>
+                    <a href="{{ url_for('delete_adrequest', ad_request_id=ad_request.ad_request_id) }}" class="button delete">Delete Adrequest</a>
                     {% if ad_request.status == 'Pending' %}
                         <a href="{{ url_for('accept_ad_request', ad_request_id=ad_request.ad_request_id) }}" class="button accept">Accept</a>
                         <a href="{{ url_for('reject_ad_request', ad_request_id=ad_request.ad_request_id) }}" class="button reject">Reject</a>
                     {% endif %}
+                    
                 </div>
             {% endfor %}
         {% else %}

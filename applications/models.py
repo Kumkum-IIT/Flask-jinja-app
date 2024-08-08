@@ -13,16 +13,13 @@ class Influencer(db.Model):
     influencer_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     name = db.Column(db.String(50), nullable=False, unique=True)
     password = db.Column(db.String(50), nullable=False)
-    image_url = db.Column(db.String(100), nullable=True)
     niche = db.Column(db.String(50), nullable=False)
-    reach = db.Column(db.Float(10,2), nullable=False)
     followers = db.Column(db.Integer, nullable=False)
     rating = db.Column(db.Numeric(5,2))
     earnings = db.Column(db.Float(10,2))
 
     # Relationships
     ad_requests = db.relationship('AdRequest', backref='influencer', lazy=True)
-    campaigns = db.relationship('Campaign', secondary='influencer_campaign', backref='influencers')
 
     def __repr__(self):
         return f'<Influencer {self.name}>'
@@ -31,9 +28,7 @@ class Influencer(db.Model):
         return {
             'influencer_id': self.influencer_id,
             'name': self.name,
-            'image_url': self.image_url,
             'niche': self.niche,
-            'reach': self.reach,
             'followers': self.followers,
             'rating': float(self.rating) if self.rating is not None else None,
             'earnings': self.earnings
@@ -130,10 +125,3 @@ class Sponser_camp(db.Model):
     def __repr__(self):
         return f'<Sponser_camp {self.id}>'
 
-class InfluencerCampaign(db.Model):
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    influencer_id = db.Column(db.Integer, db.ForeignKey('influencer.influencer_id'))
-    campaign_id = db.Column(db.Integer, db.ForeignKey('campaign.campaign_id'))
-
-    def __repr__(self):
-        return f'<InfluencerCampaign {self.id}>'

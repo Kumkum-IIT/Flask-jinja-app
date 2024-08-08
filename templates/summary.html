@@ -31,14 +31,25 @@
     <div class="container">
         <h1>Admin Summary</h1>
 
+        <!-- Overall Statistics -->
         <div class="card">
             <div class="card-body">
                 <h5 class="card-title">Overall Statistics</h5>
                 <p class="card-text">Total Campaigns: {{ total_campaigns }}</p>
                 <p class="card-text">Total Sponsors: {{ total_sponsors }}</p>
+                <p class="card-text">Total Active Users: {{ total_active_users }}</p>
+                <p class="card-text">Public Campaigns: {{ public_campaigns }}</p>
+                <p class="card-text">Private Campaigns: {{ private_campaigns }}</p>
+                <p class="card-text">Total Ad Requests: {{ total_ad_requests }}</p>
+                <p class="card-text">Pending Ad Requests: {{ pending_ad_requests }}</p>
+                <p class="card-text">Approved Ad Requests: {{ approved_ad_requests }}</p>
+                <p class="card-text">Rejected Ad Requests: {{ rejected_ad_requests }}</p>
+                <p class="card-text">Flagged Sponsors: {{ flagged_sponsors }}</p>
+                <p class="card-text">Flagged Influencers: {{ flagged_influencers }}</p>
             </div>
         </div>
 
+        <!-- Campaigns and Sponsors Summary -->
         <div>
             <h5>Campaigns and Sponsors Summary</h5>
             <canvas id="myChart" style="width:100%;max-width:700px"></canvas>
