@@ -790,3 +790,34 @@ def delete_adrequest(ad_request_id):
         
         # Redirect back to the ad requests list
         return redirect(url_for('sponser_dashboard'))  # Adjust this to the appropriate route
+
+@app.route('/search_campaigns', methods=['GET'])
+@jwt_required()
+def search_campaigns():
+    search_query = request.args.get('search_query', '').strip()
+    current_user = get_jwt_identity()
+
+    if not search_query:
+        return redirect(url_for('influencer_dashboard'))
+
+    # Try to convert the search query to a number for budget filtering
+    try:
+        budget_filter = float(search_query)
+        # If the search query is a valid number, filter campaigns by budget
+        filtered_campaigns = Campaign.query.filter(
+            Campaign.visibility == 'Public',
+            Campaign.status == 'Active',
+            Campaign.budget <= budget_filter
+        ).all()
+    except ValueError:
+        # If the search query is not a valid number, filter campaigns by category (goals)
+        filtered_campaigns = Campaign.query.filter(
+            Campaign.visibility == 'Public',
+            Campaign.status == 'Active',
+            Campaign.goals.ilike(f'%{search_query}%')
+        ).all()
+
+    influencer = Influencer.query.filter_by(name=current_user["username"]).first()
+    new_requests = AdRequest.query.filter_by(influencer_id=influencer.influencer_id, status='Pending', ad_request_by_sponser=True).all()
+
+    return render_template('influencer_dashboard.html', influencer=influencer, active_campaigns=filtered_campaigns, new_requests=new_requests)

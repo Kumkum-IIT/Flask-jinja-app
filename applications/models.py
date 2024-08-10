@@ -3,7 +3,7 @@ from applications.database import db
 class User(db.Model):
     username = db.Column(db.String(30),primary_key=True)
     password = db.Column(db.String(50),nullable=False)
-    roles = db.Column(db.String(50),nullable=False)  #admin or general
+    roles = db.Column(db.String(50),nullable=False)  #admin or sponser or influencer
     approved_by_admin = db.Column(db.Boolean, default=True)
 
     def __repr__(self):
@@ -15,7 +15,7 @@ class Influencer(db.Model):
     password = db.Column(db.String(50), nullable=False)
     niche = db.Column(db.String(50), nullable=False)
     followers = db.Column(db.Integer, nullable=False)
-    rating = db.Column(db.Numeric(5,2))
+    rating = db.Column(db.Numeric())
     earnings = db.Column(db.Float(10,2))
 
     # Relationships
